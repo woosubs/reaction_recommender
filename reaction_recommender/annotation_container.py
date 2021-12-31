@@ -41,27 +41,6 @@ class AnnotationContainer(object):
       reac_dict[one_reaction.getId()] = list(set(reactants + products))
     self.reac_dict = reac_dict
 
-  def getQualifierFromString(self, input_str, qualifier):
-    """
-    Parses string and returns a CHEBI identifier. 
-    If not, return None
-
-    Parameters
-    ----------
-    str: string_annotation
-
-    Returns
-    -------
-    str (ontology Id)
-        Return None if none is provided
-    """
-    ontologies = self.getOntologyFromString(input_str)
-    qualifier_list = [val for val in ontologies if val[0]==qualifier]
-    if qualifier_list:
-      return [val[1] for val in qualifier_list]
-    else:
-      return None
-
   def getOntologyFromString(self, string_annotation):
 
     """
@@ -87,7 +66,7 @@ class AnnotationContainer(object):
     if len(is_str_match)>0:
       is_str_match_filt = [s.replace("      ", "") for s in is_str_match]
       is_str = '\n'.join(is_str_match_filt)
-
+    #
     is_VersionOf_str_match = re.findall('<bqbiol:isVersionOf[^a-zA-Z].*?<\/bqbiol:isVersionOf>',
                                         string_annotation,
                                         flags=re.DOTALL)
@@ -102,5 +81,28 @@ class AnnotationContainer(object):
     identifiers_list = re.findall('identifiers\.org/.*/', combined_str)
     return [(r.split('/')[1],r.split('/')[2].replace('\"', '')) \
             for r in identifiers_list]
+
+  def getQualifierFromString(self, input_str, qualifier):
+    """
+    Parses string and returns a CHEBI identifier. 
+    If not, return None
+
+    Parameters
+    ----------
+    str: string_annotation
+
+    Returns
+    -------
+    str (ontology Id)
+        Return None if none is provided
+    """
+    ontologies = self.getOntologyFromString(input_str)
+    qualifier_list = [val for val in ontologies if val[0]==qualifier]
+    if qualifier_list:
+      return [val[1] for val in qualifier_list]
+    else:
+      return None
+
+
 
 
