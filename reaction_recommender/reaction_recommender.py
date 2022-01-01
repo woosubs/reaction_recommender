@@ -9,9 +9,8 @@ import pandas as pd
 import pickle
 
 # below should exist as a separate class
-import annotation_container as ac
-import constants as cn
-import get_annotation as ga
+from reaction_recommender import annotation_container as ac
+from reaction_recommender import constants as cn
 
 
 # Nov 14, 2021: using a shortened version, meaning H and D are removed
@@ -24,28 +23,8 @@ with open(os.path.join(cn.RHEA_DIR, 'rhea2chebi_reference.pkl'), 'rb') as f:
   ref_rhea2chebi = pickle.load(f)
 with open(os.path.join(cn.RHEA_DIR,'rhea_all2master.pkl'), 'rb') as f:
   ref_rhea2master = pickle.load(f)
-
-# below needs to be incorported with class
-def getRheaToFormula(ref_rhea_to_chebi, ref_chebi_to_formula):
-  """
-  Get a dictionary of RHEA-components (formulae)
-  using RHEA->CHEBI, and CHEBI->Formula map.
-  :param dict ref_rhea_to_chebi:
-  :param dict ref_chebi_to_formula:
-  :return dict
-  """
-  rhea_to_formula = dict()
-  for one_rhea in ref_rhea_to_chebi.keys():
-    one_chebis = ref_rhea_to_chebi[one_rhea]
-    one_formulas = [ref_chebi_to_formula[k] for k in one_chebis\
-                    if k in ref_chebi_to_formula.keys() and ref_chebi_to_formula[k]]
-    # remove None
-    filt_one_formulas = [val for val in one_formulas if val]
-    rhea_to_formula[one_rhea] = filt_one_formulas
-  return rhea_to_formula
-
-ref_short_rhea2formula = getRheaToFormula(ref_rhea_to_chebi=ref_rhea2chebi,
-                                          ref_chebi_to_formula=ref_shortened_chebi_to_formula)
+with open(os.path.join(cn.RHEA_DIR,'ref_short_rhea2formula.pkl'), 'rb') as f:
+  ref_short_rhea2formula = pickle.load(f)
 
 
 class ReactionRecommender(object):
@@ -84,28 +63,6 @@ class ReactionRecommender(object):
       self.reac_dict = self.container.reac_dict
       self.spec_formula_dict = self.getCHEBIToFormula()
     self.ref_mat = self.getReferenceMatrix()
-
-
-    #   # TODO: some of below operation will be done
-    #   # by the annotation container class
-    #   reader = libsbml.SBMLReader()
-    #   document = reader.readSBML(model_file)
-    #   model = document.getModel()
-    #   self.model = model
-    #   spec_dict = dict()
-    #   for one_spec in model.getListOfSpecies():
-    #     spec_dict[one_spec.getId()] = ga.getQualifierFromString(one_spec.getAnnotationString(), 'chebi')
-    #   self.spec_dict = spec_dict
-    #   ###### below needed! ######
-    #   self.spec_formula_dict = self.getCHEBIToFormula()
-    #   ###### above needed! ### ###            
-    #   reac_dict = dict()
-    #   for one_reaction in model.getListOfReactions():
-    #     reactants = [val.species for val in one_reaction.getListOfReactants()]
-    #     products = [val.species for val in one_reaction.getListOfProducts()]
-    #     reac_dict[one_reaction.getId()] = list(set(reactants + products))
-    #   self.reac_dict = reac_dict
-    # self.ref_mat = self.getReferenceMatrix()
 
   def getReferenceMatrix(self,
                          ref_reaction_to_components=ref_short_rhea2formula):
@@ -164,7 +121,7 @@ class ReactionRecommender(object):
         Dictionary mapping primary chebi terms to
         their corresponding formula.
 
-    id_to_chebis: dict
+    id_to_chebis: dict {str: str-list}
         Dictionary, mapping species id to CHEBI terms
 
     Returns
