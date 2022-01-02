@@ -25,6 +25,7 @@ with open(os.path.join(cn.RHEA_DIR,'rhea_all2master.pkl'), 'rb') as f:
   ref_rhea2master = pickle.load(f)
 with open(os.path.join(cn.RHEA_DIR,'ref_short_rhea2formula.pkl'), 'rb') as f:
   ref_short_rhea2formula = pickle.load(f)
+rhea_string_df = pd.read_csv(os.path.join(cn.RHEA_DIR,'rhea_string_equation.tsv'), sep='\t', index_col=0)
 
 
 class ReactionRecommender(object):
@@ -171,16 +172,16 @@ class ReactionRecommender(object):
     """
     if ref_mat is None:
       ref_mat = self.ref_mat
-    if ref_mat is not None:
-      query_mat = pd.DataFrame(0,
-                               index=ref_mat.columns,
-                               columns=reac_comp_dict.keys())
-      for k in reac_comp_dict.keys():
-        items = [val for val in reac_comp_dict[k] if val in query_mat.index]
-        for one_itm in items:
-          query_mat.loc[one_itm, k] = 1
-    else:
-      query_mat = None
+    # if ref_mat is not None:
+    query_mat = pd.DataFrame(0,
+                             index=ref_mat.columns,
+                             columns=reac_comp_dict.keys())
+    for k in reac_comp_dict.keys():
+      items = [val for val in reac_comp_dict[k] if val in query_mat.index]
+      for one_itm in items:
+        query_mat.loc[one_itm, k] = 1
+    # else:
+    #   query_mat = None
     return query_mat
 
   def getCandidatesByReactionId(self,
@@ -191,7 +192,7 @@ class ReactionRecommender(object):
 
     Parameters
     ----------
-    reactions: str/str-list
+    reaction_ids: str/str-list
         List of reaction IDs of a model.
         If nothing is provided, 
         it will use all reactions.
@@ -202,14 +203,16 @@ class ReactionRecommender(object):
         Ordered list of candidates..
     """
     if reaction_ids is None:
-      reaction_ids = list(self.reac_dict.keys())
+      reaction_list = list(self.reac_dict.keys())
     elif isinstance(reaction_ids, str):
-      reaction_ids = [reaction_ids]
-    sub_reac_dict = {val:self.reac_dict[val] for val in reaction_ids}
+      reaction_list = [reaction_ids]
+    else:
+      reaction_list = reaction_ids
+    sub_reac_dict = {val:self.reac_dict[val] for val in reaction_list}
     query_reac_to_formula = {val:list(itertools.chain(*[self.spec_formula_dict[itm] for itm in sub_reac_dict[val] if self.spec_formula_dict[itm]]))\
                              for val in sub_reac_dict.keys()}
     query_df = self.getQueryMatrix(reac_comp_dict=query_reac_to_formula,
-    	                           ref_mat=self.ref_mat)
+    	                             ref_mat=self.ref_mat)
     # multiply two matrices
     multi_mat = self.ref_mat.dot(query_df)
     maxes = multi_mat.max()
@@ -221,7 +224,7 @@ class ReactionRecommender(object):
     return candidates_dict
 
   def getCandidateReport(self, candidates,
-  	                     ref_rhea_df,
+  	                     ref_rhea_df=rhea_string_df,
   	                     ref_rhea_to_master=ref_rhea2master):
     """
     Get reports for candidates.
@@ -234,6 +237,8 @@ class ReactionRecommender(object):
     ref_rhea_to_master: dict
         Dictionary mapping RHEA IDs
         to its corresponding master(default) ID.
+    ref_rhea_to_master: dict
+        Dictionary mapping rhea terms to its default ids
 
     Returns
     -------
@@ -273,7 +278,13 @@ class ReactionRecommender(object):
 
   def formatElement(self, one_species):
     """
-    Formst species stoichiomety and species
+    Format species stoichiomety and species.
+    Here, 'species' is either a reactant or a product
+    that are referenced by a libsbml.Reaction. 
+
+    Parameters
+    ----------
+    one_species: libsbml.SpeciesReference 
     """
     element_stoichiometry = one_species.stoichiometry
     if element_stoichiometry==1.0:
@@ -284,7 +295,11 @@ class ReactionRecommender(object):
   def getReactionString(self, one_reaction):
     """
     Get reaction as a string
-    to print out
+    to print out.
+
+    Parameters
+    ----------
+    one_reaction: libsbml.Reaction 
     """
     reactants = " + ".join([self.formatElement(spec) for spec in one_reaction.getListOfReactants()])
     products = " + ".join([self.formatElement(spec) for spec in one_reaction.getListOfProducts()])
