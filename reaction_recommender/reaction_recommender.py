@@ -43,6 +43,13 @@ class ReactionRecommender(object):
   spec_dict: dictionary, key=species ID, itm=CHEBI annotation
   spec_formula_dict: dictionary, key=species ID, itm=formula
   ref_mat: Reference matrix
+  # Below three are computed in self.getCandidatesByReactionId
+  query_mat: transposed matrix of a given set of component species
+             assignedd when candidates are given,
+  multi_mat: dot prod of (ref_mat, query_mat) 
+             assigned once candidates are checked
+  maxes: maximum number of matches; 
+         assigned once multi_mat is calculated
   """
 
   def __init__(self,
@@ -64,6 +71,10 @@ class ReactionRecommender(object):
       self.reac_dict = self.container.reac_dict
       self.spec_formula_dict = self.getCHEBIToFormula()
     self.ref_mat = self.getReferenceMatrix()
+    # assigned while operation is done
+    self.query_mat = None
+    self.multi_mat = None
+    self.maxes = None
 
   def getReferenceMatrix(self,
                          ref_reaction_to_components=ref_short_rhea2formula):
@@ -211,15 +222,16 @@ class ReactionRecommender(object):
     sub_reac_dict = {val:self.reac_dict[val] for val in reaction_list}
     query_reac_to_formula = {val:list(itertools.chain(*[self.spec_formula_dict[itm] for itm in sub_reac_dict[val] if self.spec_formula_dict[itm]]))\
                              for val in sub_reac_dict.keys()}
-    query_df = self.getQueryMatrix(reac_comp_dict=query_reac_to_formula,
+    self.query_mat = self.getQueryMatrix(reac_comp_dict=query_reac_to_formula,
     	                             ref_mat=self.ref_mat)
     # multiply two matrices
-    multi_mat = self.ref_mat.dot(query_df)
-    maxes = multi_mat.max()
+    # multi_mat and maxes saved in class (self); may need updates in testing
+    self.multi_mat = self.ref_mat.dot(self.query_mat)
+    self.maxes = self.multi_mat.max()
     candidates_dict = dict()
-    for one_idx in maxes.index:
-      one_multi = multi_mat.loc[:,one_idx]
-      candidates = one_multi[one_multi==maxes[one_idx]].index
+    for one_idx in self.maxes.index:
+      one_multi = self.multi_mat.loc[:,one_idx]
+      candidates = one_multi[one_multi==self.maxes[one_idx]].index
       candidates_dict[one_idx] = list(candidates)
     return candidates_dict
 
